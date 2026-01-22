@@ -1,3 +1,12 @@
+---
+title: Groq Workshop Service
+emoji: 🤖
+colorFrom: blue
+colorTo: purple
+sdk: docker
+pinned: false
+---
+
 # Groq LangChain FastAPI Workshop Service
 
 ## What this is
