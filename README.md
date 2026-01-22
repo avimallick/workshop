@@ -3,6 +3,10 @@
 ## What this is
 A minimal FastAPI microservice that calls GroqCloud through LangChain. Students only edit one file (`prompts.py`) to change the assistant persona. It runs locally with Uvicorn and deploys to Hugging Face Spaces as a Docker Space with Swagger at `/docs`.
 
+
+Something
+
+
 ## API contract
 **POST /chat**
 
