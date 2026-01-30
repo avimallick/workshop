@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Workshop Chatbot</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: rgba(255,255,255,0.06);
+      --text: rgba(255,255,255,0.92);
+      --muted: rgba(255,255,255,0.65);
+      --border: rgba(255,255,255,0.12);
+      --accent: #6ee7ff;
+      --user: rgba(110,231,255,0.12);
+      --bot: rgba(255,255,255,0.08);
+      --danger: rgba(255,70,70,0.14);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      background: radial-gradient(1200px 800px at 20% 0%, rgba(110,231,255,0.15), transparent 60%),
+                  radial-gradient(900px 600px at 90% 10%, rgba(167,139,250,0.16), transparent 55%),
+                  var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      padding: 18px;
+    }
+
+    .app {
+      width: min(980px, 100%);
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 12px;
+    }
+
+    header, .composer, .chat {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+
+    header {
+      background: linear-gradient(180deg, var(--panel), transparent);
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .title { display: flex; flex-direction: column; gap: 2px; }
+    .title h1 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: 0.2px; }
+    .title .sub { font-size: 12px; color: var(--muted); }
+
+    .settings {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr auto;
+      gap: 8px;
+      align-items: end;
+      width: min(680px, 100%);
+    }
+
+    label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 5px; }
+
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      padding: 10px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.20);
+      color: var(--text);
+      outline: none;
+    }
+    input[type="text"]:focus, input[type="password"]:focus {
+      border-color: rgba(110,231,255,0.40);
+      box-shadow: 0 0 0 3px rgba(110,231,255,0.12);
+    }
+
+    button {
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.08);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px 12px;
+      cursor: pointer;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    button:hover { background: rgba(255,255,255,0.11); }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    .chat {
+      background: linear-gradient(180deg, rgba(0,0,0,0.18), rgba(0,0,0,0.10));
+      padding: 14px;
+      overflow: auto;
+      min-height: 320px;
+    }
+
+    .row { display: flex; gap: 10px; margin: 10px 0; align-items: flex-start; }
+    .row.user { justify-content: flex-end; }
+    .row.bot { justify-content: flex-start; }
+
+    .bubble {
+      max-width: 78%;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 10px 12px;
+      line-height: 1.35;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .row.user .bubble { background: var(--user); }
+    .row.bot .bubble { background: var(--bot); }
+    .danger { background: rgba(255,70,70,0.10) !important; border-color: rgba(255,120,120,0.35) !important; }
+
+    .meta { font-size: 11px; color: var(--muted); margin: 8px 0 2px; }
+
+    .composer {
+      background: var(--panel);
+      padding: 12px;
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    textarea {
+      width: 100%;
+      resize: none;
+      min-height: 44px;
+      max-height: 170px;
+      padding: 10px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.20);
+      color: var(--text);
+      outline: none;
+      line-height: 1.35;
+    }
+    textarea:focus {
+      border-color: rgba(110,231,255,0.40);
+      box-shadow: 0 0 0 3px rgba(110,231,255,0.12);
+    }
+
+    .status { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
+    .status.good { color: rgba(110,231,255,0.85); }
+    .status.bad { color: rgba(255,120,120,0.9); }
+    code {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid var(--border);
+      padding: 1px 6px;
+      border-radius: 8px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="title">
+        <h1>Workshop Chatbot</h1>
+        <div class="sub">Same-origin UI calling <code>/chat/stream</code> (no CORS needed)</div>
+      </div>
+
+      <div class="settings">
+        <div>
+          <label for="baseUrl">Server base URL</label>
+          <input id="baseUrl" type="text" placeholder="http://127.0.0.1:8000" />
+        </div>
+        <div>
+          <label for="apiKey">X-API-KEY (optional)</label>
+          <input id="apiKey" type="password" placeholder="Only if SERVICE_API_KEY is set" />
+        </div>
+        <div style="display:flex; gap:8px; justify-content:flex-end;">
+          <button id="clearBtn" title="Clear chat">Clear</button>
+        </div>
+      </div>
+    </header>
+
+    <div id="chat" class="chat" aria-live="polite"></div>
+
+    <div class="composer">
+      <textarea id="message" placeholder="Type a message… (Shift+Enter for newline, Enter to send)"></textarea>
+      <button id="sendBtn">Send</button>
+      <button id="stopBtn" disabled>Stop</button>
+      <div id="status" class="status"></div>
+    </div>
+  </div>
+
+  <script>
+    const chatEl = document.getElementById("chat");
+    const baseUrlEl = document.getElementById("baseUrl");
+    const apiKeyEl = document.getElementById("apiKey");
+    const msgEl = document.getElementById("message");
+    const sendBtn = document.getElementById("sendBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const statusEl = document.getElementById("status");
+
+    let abortController = null;
+
+    function normalizeBaseUrl(s) {
+      s = (s || "").trim();
+      if (!s) return "";
+      return s.replace(/\/+$/, ""); // strip trailing /
+    }
+
+    // Default base URL:
+    // - If served by FastAPI (http/https), use same-origin and keep relative URLs.
+    // - If opened as file://, suggest the local server URL.
+    if (location.protocol === "file:") {
+      baseUrlEl.value = "http://127.0.0.1:8000";
+      addMeta("You're opening this via file:// (origin is null). Open http://127.0.0.1:8000/ to avoid CORS, or set ALLOW_CORS=true and use the Base URL field.");
+    } else {
+      baseUrlEl.value = location.origin;
+    }
+
+    function setStatus(text, kind) {
+      statusEl.textContent = text || "";
+      statusEl.classList.remove("good", "bad");
+      if (kind) statusEl.classList.add(kind);
+    }
+
+    function scrollToBottom() {
+      chatEl.scrollTop = chatEl.scrollHeight;
+    }
+
+    function addMeta(text) {
+      const el = document.createElement("div");
+      el.className = "meta";
+      el.textContent = text;
+      chatEl.appendChild(el);
+      scrollToBottom();
+    }
+
+    function addBubble(role, text) {
+      const row = document.createElement("div");
+      row.className = `row ${role}`;
+
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.textContent = text;
+
+      row.appendChild(bubble);
+      chatEl.appendChild(row);
+      scrollToBottom();
+      return bubble;
+    }
+
+    async function sendMessage() {
+      const message = msgEl.value.trim();
+      if (!message) return;
+
+      msgEl.value = "";
+      msgEl.focus();
+
+      sendBtn.disabled = true;
+      stopBtn.disabled = false;
+      setStatus("Streaming…", "good");
+
+      addBubble("user", message);
+      const assistantBubble = addBubble("bot", "");
+      assistantBubble.classList.remove("danger");
+
+      abortController = new AbortController();
+
+      try {
+        const baseUrl = normalizeBaseUrl(baseUrlEl.value);
+        const streamUrl = baseUrl ? (baseUrl + "/chat/stream") : "/chat/stream";
+
+        const headers = {
+          "Content-Type": "application/json",
+          "Accept": "text/event-stream",
+        };
+        const apiKey = apiKeyEl.value.trim();
+        if (apiKey) headers["X-API-KEY"] = apiKey;
+
+        // Same-origin avoids CORS. If you set a different Base URL, the server
+        // must allow CORS (set ALLOW_CORS=true in .env for this project).
+        const res = await fetch(streamUrl, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ message }),
+          signal: abortController.signal,
+        });
+
+        if (!res.ok) {
+          const body = await res.text().catch(() => "");
+          assistantBubble.classList.add("danger");
+          assistantBubble.textContent = `Request failed (${res.status}):\n` + (body || res.statusText);
+          setStatus("Error", "bad");
+          return;
+        }
+
+        if (!res.body) {
+          assistantBubble.classList.add("danger");
+          assistantBubble.textContent = "Streaming not supported in this browser (no ReadableStream).";
+          setStatus("Error", "bad");
+          return;
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let buffer = "";
+        let doneSeen = false;
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split("\n\n");
+          buffer = events.pop() || "";
+
+          for (const evt of events) {
+            const lines = evt.split("\n").map(l => l.trimEnd());
+
+            let eventType = "message";
+            for (const line of lines) {
+              if (line.startsWith("event:")) eventType = line.slice(6).trim();
+            }
+
+            const dataLines = lines
+              .filter(l => l.startsWith("data:"))
+              .map(l => l.slice(5).trimStart());
+            if (dataLines.length === 0) continue;
+
+            const data = dataLines.join("\n");
+            if (data === "[DONE]") { doneSeen = true; break; }
+
+            if (eventType === "error") {
+              assistantBubble.classList.add("danger");
+              try {
+                const err = JSON.parse(data);
+                assistantBubble.textContent += `\n\n[error] ${err.error || data}`;
+              } catch {
+                assistantBubble.textContent += `\n\n[error] ${data}`;
+              }
+              setStatus("Error", "bad");
+              continue;
+            }
+
+            try {
+              const obj = JSON.parse(data);
+              if (obj && typeof obj.token === "string") {
+                assistantBubble.textContent += obj.token;
+                scrollToBottom();
+              }
+            } catch {
+              assistantBubble.textContent += data;
+              scrollToBottom();
+            }
+          }
+
+          if (doneSeen) break;
+        }
+
+        if (!assistantBubble.textContent.trim()) assistantBubble.textContent = "(no output)";
+        if (!doneSeen) addMeta("Stream closed (no [DONE] seen).");
+        setStatus("Done", "good");
+      } catch (err) {
+        if (err && err.name === "AbortError") {
+          addMeta("Stopped.");
+          setStatus("Stopped", "bad");
+          return;
+        }
+        assistantBubble.classList.add("danger");
+        assistantBubble.textContent = "Client error:\n" + (err?.message || String(err));
+        setStatus("Error", "bad");
+      } finally {
+        sendBtn.disabled = false;
+        stopBtn.disabled = true;
+        abortController = null;
+      }
+    }
+
+    sendBtn.addEventListener("click", sendMessage);
+    stopBtn.addEventListener("click", () => abortController?.abort());
+    clearBtn.addEventListener("click", () => { chatEl.innerHTML = ""; setStatus(""); msgEl.focus(); });
+    msgEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    });
+
+    addMeta("Ready. Type a message below.");
+  </script>
+</body>
+</html>

@@ -29,12 +29,22 @@ Response:
 { "answer": "string" }
 ```
 
+**POST /chat/stream** (streaming, ChatGPT-style)
+
+Response (Server-Sent Events):
+- Each event: `data: {"token":"..."}`
+- Final event: `data: [DONE]`
+
 **GET /health**
 
 Response:
 ```json
 { "status": "ok" }
 ```
+
+**GET /** (built-in chat UI)
+
+Serves a single-file HTML page that calls `/chat/stream` from the same origin (so it avoids CORS issues).
 
 ## Run locally
 1) Create a virtual environment
@@ -63,10 +73,20 @@ export SERVICE_API_KEY=my_secret
 uvicorn main:app --reload
 ```
 
-5) Open Swagger UI
+5) Open the chat UI (no CORS needed)
+```text
+http://127.0.0.1:8000/
+```
+
+6) Open Swagger UI
 ```text
 http://127.0.0.1:8000/docs
 ```
+
+### About the “CORS” error you saw
+- If you open `index.html` directly via `file://`, the browser origin becomes `null` and a relative call to `/chat/stream` becomes `file:///chat/stream` (blocked / invalid).
+- Fix: always open the built-in UI at `http://127.0.0.1:8000/`.
+- If you *must* host the HTML on a different origin (different port/host), set `ALLOW_CORS=true` in `.env`.
 
 ## Curl examples
 Basic call:
@@ -76,10 +96,27 @@ curl -X POST http://127.0.0.1:8000/chat \
   -d '{"message":"Hello!"}'
 ```
 
+Streaming call (SSE):
+```bash
+curl -N -X POST http://127.0.0.1:8000/chat/stream \
+  -H "Content-Type: application/json" \
+  -H "Accept: text/event-stream" \
+  -d '{"message":"Hello!"}'
+```
+
 With API key protection enabled:
 ```bash
 curl -X POST http://127.0.0.1:8000/chat \
   -H "Content-Type: application/json" \
+  -H "X-API-KEY: my_secret" \
+  -d '{"message":"Hello!"}'
+```
+
+Streaming with API key protection enabled:
+```bash
+curl -N -X POST http://127.0.0.1:8000/chat/stream \
+  -H "Content-Type: application/json" \
+  -H "Accept: text/event-stream" \
   -H "X-API-KEY: my_secret" \
   -d '{"message":"Hello!"}'
 ```
